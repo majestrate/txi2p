@@ -7,7 +7,7 @@ from twisted.internet.interfaces import IStreamServerEndpointStringParser
 from twisted.python.compat import _PY3
 from zope.interface import implementer
 
-from txi2p.bob.endpoints import BOBI2PClientEndpoint, BOBI2PServerEndpoint
+#from txi2p.bob.endpoints import BOBI2PClientEndpoint, BOBI2PServerEndpoint
 from txi2p.sam.endpoints import (
     SAMI2PStreamClientEndpoint,
     SAMI2PStreamServerEndpoint,
@@ -18,7 +18,7 @@ DEFAULT_ENDPOINT = {
     'SAM': 'tcp:127.0.0.1:7656',
     }
 
-DEFAULT_API = 'BOB'
+DEFAULT_API = 'SAM'
 
 if not _PY3:
     from twisted.plugin import IPlugin
