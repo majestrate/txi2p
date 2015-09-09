@@ -114,7 +114,8 @@ class SAMSession(object):
         if not self.streams:
             # No more streams, close the session
             self.proto.sender.transport.loseConnection()
-            del _sessions[self.nickname]
+            if self.nickname:
+                del _sessions[self.nickname]
 
 
 def getSession(samEndpoint, nickname, **kwargs):
