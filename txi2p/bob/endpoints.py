@@ -7,15 +7,34 @@ from zope.interface import implementer
 from txi2p.bob.factory import BOBI2PClientFactory, BOBI2PServerFactory
 
 
-def validateDestination(dest):
+def _validateDestination(dest):
     # TODO: Validate I2P domain, B32 etc.
     pass
 
 
 @implementer(interfaces.IStreamClientEndpoint)
 class BOBI2PClientEndpoint(object):
-    """
-    I2P client endpoint backed by the BOB API.
+    """I2P client endpoint backed by the BOB API.
+
+    Args:
+        bobEndpoint: An endpoint that will connect to the BOB API.
+        host (str): The I2P hostname or Destination to connect to.
+        port (int) (optional): The port to connect to inside I2P. If unset or
+            `None`, the default (null) port is used. Ignored because BOB doesn't
+            support ports yet.
+        tunnelNick (str) (optional): The tunnel nickname to use. If a tunnel
+            with this nickname already exists, it will be used. The default is
+            ``txi2p-#`` where ``#`` is the PID of the current process.
+
+            * The implication of this is that by default, all endpoints (both
+              client and server) created by the same process will use the same
+              BOB tunnel.
+
+        inhost (str) (optional): The host that the tunnel created by BOB will
+            listen on. Defaults to ``localhost``.
+        inport (int) (optional): The port that the tunnel created by BOB will
+            listen on. Defaults to a port over 9000.
+        options (dict) (optional): I2CP options to configure the tunnel with.
     """
 
     def __init__(self, reactor, bobEndpoint, dest,
@@ -24,7 +43,7 @@ class BOBI2PClientEndpoint(object):
                  inhost='localhost',
                  inport=None,
                  options=None):
-        validateDestination(dest)
+        _validateDestination(dest)
         self._reactor = reactor
         self._bobEndpoint = bobEndpoint
         self._dest = dest
@@ -35,8 +54,7 @@ class BOBI2PClientEndpoint(object):
         self._options = options
 
     def connect(self, fac):
-        """
-        Connect over I2P.
+        """Connect over I2P.
 
         The provided factory will have its ``buildProtocol`` method called once
         an I2P client tunnel has been successfully created.
@@ -60,11 +78,32 @@ class BOBI2PClientEndpoint(object):
 
 @implementer(interfaces.IStreamServerEndpoint)
 class BOBI2PServerEndpoint(object):
-    """
-    I2P server endpoint backed by the BOB API.
+    """I2P server endpoint backed by the BOB API.
+
+    Args:
+        bobEndpoint: An endpoint that will connect to the BOB API.
+        keyfile (str): Path to a local file containing the keypair to use for
+            the server Destination. If non-existent, new keys will be generated
+            and stored.
+        port (int) (optional): The port to listen on inside I2P. If unset or
+            `None`, the default (null) port is used. Ignored because BOB doesn't
+            support ports yet.
+        tunnelNick (str) (optional): The tunnel nickname to use. If a tunnel
+            with this nickname already exists, it will be used. The default is
+            ``txi2p-#`` where ``#`` is the PID of the current process.
+
+            * The implication of this is that by default, all endpoints (both
+              client and server) created by the same process will use the same
+              BOB tunnel.
+
+        outhost (str) (optional): The host that the tunnel created by BOB will
+            forward data to. Defaults to ``localhost``.
+        outport (int) (optional): The port that the tunnel created by BOB will
+            forward data to. Defaults to a port over 9000.
+        options (dict) (optional): I2CP options to configure the tunnel with.
     """
 
-    def __init__(self, reactor, bobEndpoint, keypairPath,
+    def __init__(self, reactor, bobEndpoint, keyfile,
                  port=None,
                  tunnelNick=None,
                  outhost='localhost',
@@ -72,7 +111,7 @@ class BOBI2PServerEndpoint(object):
                  options=None):
         self._reactor = reactor
         self._bobEndpoint = bobEndpoint
-        self._keypairPath = keypairPath
+        self._keyfile = keyfile
         self._port = port
         self._tunnelNick = tunnelNick
         self._outhost = outhost
@@ -80,8 +119,7 @@ class BOBI2PServerEndpoint(object):
         self._options = options
 
     def listen(self, fac):
-        """
-        Listen over I2P.
+        """Listen over I2P.
 
         The provided factory will have its ``buildProtocol`` method called once
         an I2P server tunnel has been successfully created.
@@ -90,7 +128,7 @@ class BOBI2PServerEndpoint(object):
         will immediately close.
         """
 
-        i2pFac = BOBI2PServerFactory(self._reactor, fac, self._bobEndpoint, self._keypairPath,
+        i2pFac = BOBI2PServerFactory(self._reactor, fac, self._bobEndpoint, self._keyfile,
                                      self._tunnelNick,
                                      self._outhost,
                                      self._outport,

@@ -12,13 +12,7 @@ from txi2p.sam.endpoints import (
     SAMI2PStreamClientEndpoint,
     SAMI2PStreamServerEndpoint,
 )
-
-DEFAULT_ENDPOINT = {
-    'BOB': 'tcp:127.0.0.1:2827',
-    'SAM': 'tcp:127.0.0.1:7656',
-    }
-
-DEFAULT_API = 'SAM'
+from txi2p.utils import getApi
 
 if not _PY3:
     from twisted.plugin import IPlugin
@@ -43,10 +37,11 @@ class I2PClientParser(object):
 
     def _parseSAMClient(self, reactor, host, port, samEndpoint,
                      nickname=None,
+                     autoClose=False,
                      options=None):
         return SAMI2PStreamClientEndpoint.new(
             clientFromString(reactor, samEndpoint),
-            host, port, nickname, options)
+            host, port, nickname, autoClose, options)
 
     _apiParsers = {
         'BOB': _parseBOBClient,
@@ -55,18 +50,7 @@ class I2PClientParser(object):
 
     def _parseClient(self, reactor, host, port=None,
                      api=None, apiEndpoint=None, **kwargs):
-        if not api:
-            if apiEndpoint:
-                raise ValueError('api must be specified if apiEndpoint is given')
-            else:
-                api = DEFAULT_API
-
-        if api not in self._apiParsers:
-            raise ValueError('Specified I2P API is invalid or unsupported')
-
-        if not apiEndpoint:
-            apiEndpoint = DEFAULT_ENDPOINT[api]
-
+        api, apiEndpoint = getApi(api, apiEndpoint, self._apiParsers)
         return self._apiParsers[api](self, reactor, host,
                                      port and int(port) or None,
                                      apiEndpoint, **kwargs)
@@ -82,42 +66,32 @@ class I2PClientParser(object):
 class I2PServerParser(object):
     prefix = 'i2p'
 
-    def _parseBOBServer(self, reactor, keypairPath, port, bobEndpoint,
+    def _parseBOBServer(self, reactor, keyfile, port, bobEndpoint,
                      tunnelNick=None,
                      outhost='localhost',
                      outport=None,
                      options=None):
         return BOBI2PServerEndpoint(reactor, clientFromString(reactor, bobEndpoint),
-                                    keypairPath, port, tunnelNick, outhost,
+                                    keyfile, port, tunnelNick, outhost,
                                     outport and int(outport) or None, options)
 
-    def _parseSAMServer(self, reactor, keypairPath, port, samEndpoint,
+    def _parseSAMServer(self, reactor, keyfile, port, samEndpoint,
                      nickname=None,
+                     autoClose=False,
                      options=None):
         return SAMI2PStreamServerEndpoint.new(reactor,
             clientFromString(reactor, samEndpoint),
-            keypairPath, port, nickname, options)
+            keyfile, port, nickname, autoClose, options)
 
     _apiParsers = {
         'BOB': _parseBOBServer,
         'SAM': _parseSAMServer,
         }
 
-    def _parseServer(self, reactor, keypairPath, port=None,
+    def _parseServer(self, reactor, keyfile, port=None,
                      api=None, apiEndpoint=None, **kwargs):
-        if not api:
-            if apiEndpoint:
-                raise ValueError('api must be specified if apiEndpoint is given')
-            else:
-                api = DEFAULT_API
-
-        if api not in self._apiParsers:
-            raise ValueError('Specified I2P API is invalid or unsupported')
-
-        if not apiEndpoint:
-            apiEndpoint = DEFAULT_ENDPOINT[api]
-
-        return self._apiParsers[api](self, reactor, keypairPath,
+        api, apiEndpoint = getApi(api, apiEndpoint, self._apiParsers)
+        return self._apiParsers[api](self, reactor, keyfile,
                                      port and int(port) or None,
                                      apiEndpoint, **kwargs)
 

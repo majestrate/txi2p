@@ -1,7 +1,7 @@
 # Copyright (c) str4d <str4d@mail.i2p>
 # See COPYING for details.
 
-from twisted.internet import defer, interfaces
+from twisted.internet import defer, error, interfaces
 from twisted.internet.endpoints import serverFromString
 from zope.interface import implementer
 
@@ -10,27 +10,29 @@ from txi2p.sam.session import SAMSession, getSession
 from txi2p.sam.stream import StreamConnectFactory, StreamForwardFactory
 
 
-def parseHost(host):
+def _parseHost(host):
     # TODO: Validate I2P domain, B32 etc.
     return (host, None) if host[-4:] == '.i2p' else (None, host)
 
-def parseOptions(options):
+def _parseOptions(options):
     return dict([option.split(':') for option in options.split(',')]) if options else {}
 
 
 @implementer(interfaces.IStreamClientEndpoint)
 class SAMI2PStreamClientEndpoint(object):
-    """
-    I2P stream client endpoint backed by the SAM API.
+    """I2P stream client endpoint backed by the SAM API.
     """
 
     @classmethod
-    def new(cls, samEndpoint, host, port=None, nickname=None, options=None):
-        d = getSession(samEndpoint, nickname, options=parseOptions(options))
+    def new(cls, samEndpoint, host, port=None, nickname=None, autoClose=False, options=None):
+        d = getSession(nickname,
+                       samEndpoint=samEndpoint,
+                       autoClose=autoClose,
+                       options=_parseOptions(options))
         return cls(d, host, port)
 
     def __init__(self, session, host, port=None):
-        self._host, self._dest = parseHost(host)
+        self._host, self._dest = _parseHost(host)
         self._port = port
         if isinstance(session, SAMSession):
             self._session = session
@@ -39,8 +41,7 @@ class SAMI2PStreamClientEndpoint(object):
             self._sessionDeferred = session
 
     def connect(self, fac):
-        """
-        Connect over I2P.
+        """Connect over I2P.
 
         The provided factory will have its ``buildProtocol`` method called once
         an I2P client tunnel has been successfully created.
@@ -50,6 +51,9 @@ class SAMI2PStreamClientEndpoint(object):
         """
 
         def createStream(val):
+            if self._session.style != 'STREAM':
+                raise error.UnsupportedSocketType()
+
             i2pFac = StreamConnectFactory(fac, self._session, self._host, self._dest)
             d = self._session.samEndpoint.connect(i2pFac)
             # Once the SAM IProtocol is returned, wait for the
@@ -71,13 +75,16 @@ class SAMI2PStreamClientEndpoint(object):
 
 @implementer(interfaces.IStreamServerEndpoint)
 class SAMI2PStreamServerEndpoint(object):
-    """
-    I2P server endpoint backed by the SAM API.
+    """I2P server endpoint backed by the SAM API.
     """
 
     @classmethod
-    def new(cls, reactor, samEndpoint, keyfile, port=None, nickname=None, options=None):
-        d = getSession(samEndpoint, nickname, keyfile=keyfile, options=parseOptions(options))
+    def new(cls, reactor, samEndpoint, keyfile, port=None, nickname=None, autoClose=False, options=None):
+        d = getSession(nickname,
+                       samEndpoint=samEndpoint,
+                       autoClose=autoClose,
+                       keyfile=keyfile,
+                       options=_parseOptions(options))
         return cls(reactor, d, port)
 
     def __init__(self, reactor, session, port=None):
@@ -90,8 +97,7 @@ class SAMI2PStreamServerEndpoint(object):
             self._sessionDeferred = session
 
     def listen(self, fac):
-        """
-        Listen over I2P.
+        """Listen over I2P.
 
         The provided factory will have its ``buildProtocol`` method called once
         an I2P server tunnel has been successfully created.
@@ -101,6 +107,9 @@ class SAMI2PStreamServerEndpoint(object):
         """
 
         def createStream(val):
+            if self._session.style != 'STREAM':
+                raise error.UnsupportedSocketType()
+
             serverEndpoint = serverFromString(self._reactor,
                                               'tcp:0:interface=127.0.0.1')
             wrappedFactory = I2PFactoryWrapper(fac, self._session.address)
