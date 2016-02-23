@@ -1,20 +1,8 @@
-.. txi2p documentation master file, created by
-   sphinx-quickstart on Thu Sep 17 13:15:49 2015.
+.. include:: ../README.rst
+   :end-line: -8
 
-txi2p
-=====
-
-``txi2p`` is a set of I2P bindings for `Twisted <https://twistedmatrix.com/>`_
-10.1 or greater.
-
-Documentation
--------------
-
-.. toctree::
-   :maxdepth: 2
-
-API Docs:
----------
+API Docs
+========
 
 .. toctree::
    :maxdepth: 2
@@ -32,3 +20,6 @@ Indices and tables
 * :ref:`modindex`
 * :ref:`search`
 
+.. |txi2p| replace:: :mod:`txi2p`
+.. |clientFromString| replace:: :func:`twisted.internet.endpoints.clientFromString`
+.. |serverFromString| replace:: :func:`twisted.internet.endpoints.serverFromString`

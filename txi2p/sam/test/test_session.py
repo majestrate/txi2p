@@ -155,7 +155,11 @@ class TestSAMSession(unittest.TestCase):
         proto.sender = Mock()
         proto.sender.transport = self.tr
         self.tr.protocol = proto
-        self.s = session.SAMSession('foo', None, '3.1', 'STREAM', 'foo', proto, False)
+        self.s = session.SAMSession()
+        self.s.nickname = 'foo'
+        self.s.samVersion = '3.1'
+        self.s.id = 'foo'
+        self.s._proto = proto
         session._sessions['foo'] = self.s
 
     def tearDown(self):
@@ -204,7 +208,7 @@ class TestGetSession(unittest.TestCase):
         self.assertEqual(1, samEndpoint.called)
         self.assertEqual('nick', s.nickname)
         self.assertEqual('nick', s.id)
-        self.assertEqual(proto, s.proto)
+        self.assertEqual(proto, s._proto)
         self.assertEqual(TEST_B64, s.address.destination)
     test_getSession_newNickname.skip = skipSRO
 
@@ -307,3 +311,16 @@ class TestDestGenerateFactory(SAMFactoryTestMixin, unittest.TestCase):
         self.assertIsInstance(self.failureResultOf(fac.deferred).value, ValueError)
         os.remove(tmp)
     test_destGenerated_keyfileExists.skip = skipSRO
+
+
+class TestGenerateDestination(unittest.TestCase):
+    def test_generateDestination(self):
+        proto = proto_helpers.AccumulatingProtocol()
+        samEndpoint = FakeEndpoint()
+        samEndpoint.deferred = defer.succeed(None)
+        samEndpoint.facDeferred = defer.succeed(I2PAddress(TEST_B64))
+        d = session.generateDestination('', samEndpoint)
+        s = self.successResultOf(d)
+        self.assertEqual(1, samEndpoint.called)
+        self.assertEqual(I2PAddress(TEST_B64), s)
+    test_generateDestination.skip = skipSRO
